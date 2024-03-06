@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Rectangle</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>請標記設備三色燈位置及其設備名稱</h1>
+    <canvas id="canvas"></canvas>
+    <br>
+    <button onclick="sendData()">標記完成</button>
+    <button onclick="clearAll()">清除標記</button>
+    <button onclick="redirectToMainPage()">回主頁</button>
+
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const streamingId = {{ streaming_id }};
+        const labelData = {{ label_data | safe }};
+
+        let rectangles = [];
+        let isDrawing = false;
+        let startX, startY, endX, endY;
+
+        labelData.forEach(item => {
+            console.log(item)
+            const rectangle = {
+                x1: item.x1,
+                y1: item.y1,
+                x2: item.x2,
+                y2: item.y2,
+                equipment_no: item.equipment_no,
+                streaming_data_id: item.streaming_data_id
+            };
+            rectangles.push(rectangle);
+        });
+
+        // 加载上传的图像
+        const img = new Image();
+        img.src = "{{ temp_img_path }}";
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            drawAllRectangles();
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', drawRectangle);
+        canvas.addEventListener('mouseup', stopDrawing);
+
+        function redirectToMainPage() {
+            window.location.href = "http://127.0.0.1:8000/"; 
+        }
+
+        function startDrawing(event) {
+            isDrawing = true;
+            startX = event.offsetX;
+            startY = event.offsetY;
+        }
+
+        function drawRectangle(event) {
+            if (!isDrawing) return;
+            endX = event.offsetX;
+            endY = event.offsetY;
+            clearCanvas();
+            drawAllRectangles();
+            draw();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            console.log('Start X:', startX, ', Start Y:', startY);
+            console.log('End X:', endX, ', End Y:', endY);
+            addRectangle();
+        }
+
+        function draw() {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+
+        function addRectangle() {
+            const text = prompt("Enter text:");
+            if (text) {
+                console.log(text)
+                const rectangle = { x1: startX, y1: startY, x2: endX, y2: endY, equipment_no: text, streaming_data_id: streamingId };
+                rectangles.push(rectangle);
+                drawAllRectangles();
+                //sendData(rectangle); // 发送数据到后端
+            }
+        }
+
+        function drawAllRectangles() {
+            rectangles.forEach(rectangle => {
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(rectangle.x1, rectangle.y1, rectangle.x2 - rectangle.x1, rectangle.y2 - rectangle.y1);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = 'red';
+                ctx.fillText(rectangle.equipment_no, rectangle.x1, rectangle.y1);
+            });
+        }
+
+        function sendData() {
+            console.log('sendData');
+            console.log(JSON.stringify(rectangles));
+            fetch('/api/v1/labels/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(rectangles),
+            })
+            .then(response => {
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                } else {
+                    alert('執行完成');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data sent to server:', data);
+            })
+            .catch(error => {
+                console.error('Error sending data to server:', error);
+                alert('執行失敗');
+            });
+        }
+
+        function clearAll() {
+            console.log('clear');
+            rectangles = [];
+            clearCanvas();
+            drawAllRectangles();
+        }
+
+    </script>
+</body>
+</html>
