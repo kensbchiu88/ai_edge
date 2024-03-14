@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Data</title>
+</head>
+<body>
+    <h1>攝影機影像</h1>
+    <select id="dataSelect">
+        <!-- Options will be filled dynamically using JavaScript -->
+    </select>
+    <button onclick="getImage()">標記</button>
+
+    <script>
+        async function populateSelect() {
+            const response = await fetch('/api/v1/streaming');
+            const data = await response.json();
+            
+            const select = document.getElementById('dataSelect');
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.uri;
+                option.text = `${item.device_name}: ${item.uri}`;
+                select.appendChild(option);
+            });
+        }
+
+        async function getImage() {
+            const uri = document.getElementById('dataSelect').value;
+            window.location.href = `/image?uri=${uri}`;
+        }
+
+        populateSelect();
+    </script>
+</body>
+</html>
